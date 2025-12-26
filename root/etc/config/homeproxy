@@ -33,6 +33,9 @@ config homeproxy 'config'
 	option github_token ''
 	option log_level 'warn'
 
+config homeproxy 'experimental'
+	option enable_clash_api '0'
+
 config homeproxy 'control'
 	option lan_proxy_mode 'disabled'
 	list wan_proxy_ipv4_ips '91.105.192.0/23'
