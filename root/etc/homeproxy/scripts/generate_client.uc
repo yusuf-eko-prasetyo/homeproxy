@@ -29,7 +29,8 @@ uci.load(uciconfig);
 
 const uciinfra = 'infra',
       ucimain = 'config',
-      ucicontrol = 'control';
+      ucicontrol = 'control',
+      uciexp = 'experimental';
 
 const ucidnssetting = 'dns',
       ucidnsserver = 'dns_server',
@@ -105,6 +106,16 @@ if (routing_mode !== 'custom') {
 
 const proxy_mode = uci.get(uciconfig, ucimain, 'proxy_mode') || 'redirect_tproxy',
       default_interface = uci.get(uciconfig, ucicontrol, 'bind_interface');
+      
+      cache_file_store_rdrc = uci.get(uciconfig, uciexp, 'cache_file_store_rdrc'),
+      cache_file_rdrc_timeout = uci.get(uciconfig, uciexp, 'cache_file_rdrc_timeout');
+
+const enable_clash_api = uci.get(uciconfig, uciexp, 'enable_clash_api'),
+	  external_ui = uci.get(uciconfig, uciexp, 'external_ui'),
+	  external_ui_download_url = uci.get(uciconfig, uciexp, 'external_ui_download_url'),
+	  external_ui_download_detour = uci.get(uciconfig, uciexp, 'external_ui_download_detour'),
+	  default_mode = uci.get(uciconfig, uciexp, 'default_mode'),
+      external_controller = uci.get(uciconfig, uciexp, 'external_controller');
 
 const mixed_port = uci.get(uciconfig, uciinfra, 'mixed_port') || '5330';
 
@@ -960,12 +971,52 @@ if (!isEmpty(main_node)) {
 
 /* Experimental start */
 if (routing_mode in ['bypass_mainland_china', 'custom']) {
+	const ui_map = {
+		'https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip': 'metacubexd',
+		'https://github.com/MetaCubeX/yacd/archive/gh-pages.zip': 'yacd',
+		'https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip': 'zashboard'
+	};
+
+	let ui_path = '/etc/homeproxy/resources/ui'; 
+
+	if (enable_clash_api === '1' && ui_map[external_ui_download_url]) {
+		ui_path = ui_path + '/' + ui_map[external_ui_download_url];
+	}
+	else if (!isEmpty(external_ui)) {
+		ui_path = (type(external_ui) === 'array') ? external_ui[0] : external_ui;
+	}
+
 	config.experimental = {
 		cache_file: {
 			enabled: true,
 			path: RUN_DIR + '/cache.db',
-			store_rdrc: strToBool(cache_file_store_rdrc),
-			rdrc_timeout: strToTime(cache_file_rdrc_timeout),
+			store_rdrc: strToBool(cache_file_store_rdrc === '1') || null,
+			rdrc_timeout: strToTime(cache_file_rdrc_timeout)
+		},
+		clash_api: {
+			external_controller: (enable_clash_api === '1') ? external_controller : null,
+			external_ui: ui_path,
+			external_ui_download_url: external_ui_download_url,
+			external_ui_download_detour: external_ui_download_detour,
+			default_mode: default_mode
+		}
+	};
+
+	if (enable_clash_api === '1' && !isEmpty(external_ui_download_url)) {
+		if (system(sprintf('[ -d "%s" ] && [ "$(ls -A "%s")" ]', ui_path, ui_path)) !== 0) {
+			system(sprintf('mkdir -p "%s"', ui_path));
+			const zip_file = '/tmp/homeproxy_ui.zip';
+
+			system(sprintf('rm -f %s', zip_file));
+
+			let dl_cmd = sprintf('wget --no-check-certificate -T 15 -O %s "%s" || curl -kL -o %s "%s"', zip_file, external_ui_download_url, zip_file, external_ui_download_url);
+			let ret = system(dl_cmd);
+
+			if (ret === 0 && system(sprintf('[ -s %s ]', zip_file)) === 0) {
+				system(sprintf('unzip -q -o -d "%s" %s', ui_path, zip_file));
+				system(sprintf('rm -f %s', zip_file));
+				system(sprintf('cd "%s" && sub=$(ls) && [ $(echo "$sub" | wc -l) -eq 1 ] && [ -d "$sub" ] && mv "$sub"/* . && rmdir "$sub"', ui_path));
+			}
 		}
 	};
 }
