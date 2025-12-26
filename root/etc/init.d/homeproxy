@@ -225,6 +225,8 @@ start_service() {
 	procd_set_param respawn
 	procd_close_instance
 
+    download_clash_ui &
+
 	case "$routing_mode" in
 	"bypass_mainland_china")
 		# Prepare cache db
@@ -335,4 +337,62 @@ reload_service() {
 service_triggers() {
 	procd_add_reload_trigger "$CONF"
 	procd_add_interface_trigger "interface.*.up" wan /etc/init.d/$CONF reload
+}
+
+download_clash_ui() {
+    sleep 3
+
+    config_load "homeproxy"
+    local enable_clash_api url detour
+    config_get_bool enable_clash_api "experimental" "enable_clash_api" "0"
+    config_get url "experimental" "external_ui_download_url"
+    config_get detour "experimental" "external_ui_download_detour"
+
+    [ "$enable_clash_api" -eq 1 ] || return 0
+    [ -n "$url" ] || return 0
+
+    local ui_base="/etc/homeproxy/resources/ui"
+    local ui_path="$ui_base"
+    
+    case "$url" in
+        *"yacd"*) ui_path="$ui_base/yacd" ;;
+        *"metacubexd"*) ui_path="$ui_base/metacubexd" ;;
+        *"zashboard"*) ui_path="$ui_base/zashboard" ;;
+    esac
+
+    if [ -d "$ui_path" ] && [ "$(ls -A "$ui_path")" ]; then
+        return 0
+    fi
+
+    mkdir -p "$ui_path"
+    local zip_file="/tmp/homeproxy_ui.zip"
+    rm -f "$zip_file"
+
+    local proxy_cmd=""
+    if [ "$detour" != "direct-out" ] && [ "$detour" != "nil" ]; then
+        local mixed_port
+        config_get mixed_port "infra" "mixed_port" "5330"
+        proxy_cmd="-e use_proxy=yes -e http_proxy=127.0.0.1:$mixed_port -e https_proxy=127.0.0.1:$mixed_port"
+    fi
+
+    log "Downloading Clash UI from $url..."
+
+    wget --no-check-certificate -T 30 -O || curl -kL -o "$zip_file" $proxy_cmd "$url"
+    
+    if [ $? -eq 0 ] && [ -s "$zip_file" ]; then
+        unzip -q -o -d "$ui_path" "$zip_file"
+        rm -f "$zip_file"
+
+        cd "$ui_path" || return
+        local sub_dir
+        sub_dir=$(ls)
+        if [ $(echo "$sub_dir" | wc -l) -eq 1 ] && [ -d "$sub_dir" ]; then
+            mv "$sub_dir"/* .
+            rmdir "$sub_dir"
+        fi
+        log "Clash UI installed to $ui_path"
+    else
+        log "Failed to download Clash UI."
+        rm -f "$zip_file"
+    fi
 }
