@@ -106,9 +106,9 @@ if (routing_mode !== 'custom') {
 
 const proxy_mode = uci.get(uciconfig, ucimain, 'proxy_mode') || 'redirect_tproxy',
       default_interface = uci.get(uciconfig, ucicontrol, 'bind_interface');
-      
-      cache_file_store_rdrc = uci.get(uciconfig, uciexp, 'cache_file_store_rdrc'),
-      cache_file_rdrc_timeout = uci.get(uciconfig, uciexp, 'cache_file_rdrc_timeout');
+
+cache_file_store_rdrc = uci.get(uciconfig, uciexp, 'cache_file_store_rdrc'),
+cache_file_rdrc_timeout = uci.get(uciconfig, uciexp, 'cache_file_rdrc_timeout');
 
 const enable_clash_api = uci.get(uciconfig, uciexp, 'enable_clash_api'),
 	  external_ui = uci.get(uciconfig, uciexp, 'external_ui'),
@@ -972,11 +972,11 @@ if (!isEmpty(main_node)) {
 /* Experimental start */
 if (routing_mode in ['bypass_mainland_china', 'custom']) {
 	const ui_map = {
-		'https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip': 'metacubexd',
 		'https://github.com/MetaCubeX/yacd/archive/gh-pages.zip': 'yacd',
+		'https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip': 'metacubexd',
 		'https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip': 'zashboard'
 	};
-
+	
 	let ui_path = '/etc/homeproxy/resources/ui'; 
 
 	if (enable_clash_api === '1' && ui_map[external_ui_download_url]) {
@@ -996,29 +996,15 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 		clash_api: {
 			external_controller: (enable_clash_api === '1') ? external_controller : null,
 			external_ui: ui_path,
-			external_ui_download_url: external_ui_download_url,
-			external_ui_download_detour: external_ui_download_detour,
 			default_mode: default_mode
 		}
 	};
 
-	if (enable_clash_api === '1' && !isEmpty(external_ui_download_url)) {
-		if (system(sprintf('[ -d "%s" ] && [ "$(ls -A "%s")" ]', ui_path, ui_path)) !== 0) {
+	if (enable_clash_api === '1') {
+		if (system(sprintf('[ -d "%s" ]', ui_path)) !== 0) {
 			system(sprintf('mkdir -p "%s"', ui_path));
-			const zip_file = '/tmp/homeproxy_ui.zip';
-
-			system(sprintf('rm -f %s', zip_file));
-
-			let dl_cmd = sprintf('wget --no-check-certificate -T 15 -O %s "%s" || curl -kL -o %s "%s"', zip_file, external_ui_download_url, zip_file, external_ui_download_url);
-			let ret = system(dl_cmd);
-
-			if (ret === 0 && system(sprintf('[ -s %s ]', zip_file)) === 0) {
-				system(sprintf('unzip -q -o -d "%s" %s', ui_path, zip_file));
-				system(sprintf('rm -f %s', zip_file));
-				system(sprintf('cd "%s" && sub=$(ls) && [ $(echo "$sub" | wc -l) -eq 1 ] && [ -d "$sub" ] && mv "$sub"/* . && rmdir "$sub"', ui_path));
-			}
 		}
-	};
+	}
 }
 /* Experimental end */
 
