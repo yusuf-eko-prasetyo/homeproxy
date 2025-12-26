@@ -1429,15 +1429,15 @@ return view.extend({
 
 		so = ss.option(form.Value, 'external_ui', _('External UI Path'),
 			_('Path to directory containing static web resources. If using the downloader, this is overridden automatically.'));
-		so.default = '/etc/homeproxy/resources/ui/metacubexd';
+		so.default = '/etc/homeproxy/resources/ui';
 		so.depends('enable_clash_api', '1');
 
 		so = ss.option(form.ListValue, 'external_ui_download_url', _('UI Download link'),
 			_('Select the UI to download.'));
-		so.value('https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip', 'MetaCubeX/metacubexd');
 		so.value('https://github.com/MetaCubeX/yacd/archive/gh-pages.zip', 'MetaCubeX/yacd');
+		so.value('https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip', 'MetaCubeX/metacubexd');
 		so.value('https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip', 'Zephyruso/zashboard');
-		so.default = 'https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip';
+		so.default = 'https://github.com/MetaCubeX/yacd/archive/gh-pages.zip';
 		so.rmempty = false;
 		so.depends('enable_clash_api', '1');
 
@@ -1446,15 +1446,17 @@ return view.extend({
 		so.load = function (section_id) {
 			delete this.keylist;
 			delete this.vallist;
-
+			this.value('', _('-- Please choose --'));
 			this.value('direct-out', _('Direct'));
 			this.value('block-out', _('Block'));
-			uci.sections(data[0], 'routing_node', (res) => {
+			uci.sections(data[0], 'node', (res) => {
 				this.value(res.label, res.label);
 			});
-
-			return this.super('load', section_id);
+			
+		    return this.super('load', section_id);
+		    
 		}
+		
 		so.depends('enable_clash_api', '1');
 
 		so = ss.option(form.Value, 'default_mode', _('Default mode'),
