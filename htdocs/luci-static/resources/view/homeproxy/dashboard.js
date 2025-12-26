@@ -3,9 +3,7 @@
 
 return view.extend({
     render: function() {
-        // Construct the URL dynamically using the current hostname and port 9090
-        // Matches the logic: "http://" + window.location.hostname + ":9090"
-        var url = 'http://' + window.location.hostname + ':9090';
+        let url = 'http://' + window.location.hostname + ':9090';
 
         return E('div', { 'class': 'cbi-map' }, [
             E('br'),
@@ -17,7 +15,6 @@ return view.extend({
         ]);
     },
 
-    // Disable the Save/Reset buttons since this is just a view
     handleSave: null,
     handleSaveApply: null,
     handleReset: null
